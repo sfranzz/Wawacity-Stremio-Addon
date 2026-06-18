@@ -56,57 +56,14 @@ class MovieScraper(BaseScraper):
     async def _search_movie(
         self, title: str, year: Optional[str], base_url: str
     ) -> Optional[Dict]:
-        encoded_title = quote_url_param(str(title)[:31])
-        search_url = f"{base_url}/?p=films&search={encoded_title}"
-        if year:
-            search_url += f"&year={str(year)}"
-        
-        logger.log("SCRAPER", f"Searching: {search_url}")
-        
-        try:
-            # --- Step 1: Find movie link ---
-            response = await http_client.get(search_url)
-            if response.status_code != 200:
-                logger.error(f"Search failed: {response.status_code}")
-                return None
-            
-            parser = HTMLParser(response.text)
-            search_nodes = parser.css('a[href^="?p=film&id="]')
-            
-            if not search_nodes:
-                logger.error(f"No movie links found for '{title}'")
-                return None
-            
-            first_link = search_nodes[0].attributes.get("href", "")
-            
-            # --- Step 2: Get movie title from page ---
-            movie_url = f"{base_url}/{first_link}"
-            response2 = await http_client.get(movie_url)
-            if response2.status_code != 200:
-                return None
-            
-            parser2 = HTMLParser(response2.text)
-            title_nodes = parser2.css('div.wa-sub-block-title:has(i.flag)')
-            
-            if title_nodes:
-                page_title = title_nodes[0].text(strip=True, separator="|")
-                if not page_title.strip():
-                    logger.error(f"Empty title found for {title}")
-                    return None
-                return {
-                    "link": first_link,
-                    "text": page_title
-                }
-            else:
-                logger.error(f"No title found for {title}")
-                return {
-                    "link": first_link,
-                    "text": f"{title} [{year}]" if year else title
-                }
-            
-        except Exception as e:
-            logger.error(f"Failed to search movie: {e}")
-            return None
+        return await self._search_generic(
+            title,
+            year,
+            base_url,
+            search_path="films",
+            link_prefix="?p=film&id=",
+            label="movie",
+        )
     
     # --- Extract available qualities ---
     async def _extract_qualities(self, search_result: Dict, base_url: str) -> List[Dict]:

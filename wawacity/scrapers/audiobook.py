@@ -454,43 +454,16 @@ class AudiobookScraper(BaseScraper):
         }
 
     async def _search_audiobook(self, title: str, base_url: str) -> Optional[Dict]:
-        encoded_title = quote_url_param(str(title)[:31])
-        search_url = (
-            f"{base_url}/?p=ebooks&s={AUDIOBOOK_SUBCATEGORY}&search={encoded_title}"
+        return await self._search_generic(
+            title,
+            None,
+            base_url,
+            search_path=f"ebooks&s={AUDIOBOOK_SUBCATEGORY}",
+            link_prefix="?p=ebook&id=",
+            label="audiobook",
+            title_selector="div.wa-sub-block-title a",
+            separator="",
         )
-
-        logger.log("SCRAPER", f"Searching audiobooks: {search_url}")
-
-        try:
-            response = await http_client.get(search_url)
-            if response.status_code != 200:
-                logger.error(f"Audiobook search failed: {response.status_code}")
-                return None
-
-            parser = HTMLParser(response.text)
-            search_nodes = parser.css('a[href^="?p=ebook&id="]')
-
-            if not search_nodes:
-                logger.error(f"No audiobook links found for '{title}'")
-                return None
-
-            first_link = search_nodes[0].attributes.get("href", "")
-            detail_url = f"{base_url}/{first_link}"
-            response2 = await http_client.get(detail_url)
-            if response2.status_code != 200:
-                return None
-
-            parser2 = HTMLParser(response2.text)
-            title_nodes = parser2.css("div.wa-sub-block-title a")
-
-            page_title = title
-            if title_nodes:
-                page_title = title_nodes[0].text(strip=True) or title
-
-            return {"link": first_link, "text": page_title}
-        except Exception as e:
-            logger.error(f"Failed to search audiobook: {e}")
-            return None
 
     async def _extract_links(self, search_result: Dict, base_url: str) -> List[Dict]:
         results: List[Dict] = []

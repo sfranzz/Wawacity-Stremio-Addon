@@ -68,3 +68,62 @@ class BaseScraper:
             return (2, release_type)
         else:
             return (99, release_type)
+
+    # --- Generic search logic ---
+    async def _search_generic(
+        self,
+        title: str,
+        year: Optional[str],
+        base_url: str,
+        search_path: str,
+        link_prefix: str,
+        label: str,
+        title_selector: str = "div.wa-sub-block-title:has(i.flag)",
+        separator: str = "|",
+    ) -> Optional[Dict]:
+        from wawacity.utils.helpers import quote_url_param
+        from wawacity.utils.logger import logger
+
+        encoded_title = quote_url_param(str(title)[:31])
+        search_url = f"{base_url}/?p={search_path}&search={encoded_title}"
+        if year:
+            search_url += f"&year={str(year)}"
+
+        logger.log("SCRAPER", f"Searching {label}: {search_url}")
+
+        try:
+            # Step 1: Find media link
+            response = await http_client.get(search_url)
+            if response.status_code != 200:
+                logger.error(f"Search failed for {label}: {response.status_code}")
+                return None
+
+            parser = HTMLParser(response.text)
+            search_nodes = parser.css(f'a[href^="{link_prefix}"]')
+
+            if not search_nodes:
+                logger.error(f"No {label} links found for '{title}'")
+                return None
+
+            first_link = search_nodes[0].attributes.get("href", "")
+
+            # Step 2: Get title from content page
+            detail_url = f"{base_url}/{first_link}"
+            response2 = await http_client.get(detail_url)
+            if response2.status_code != 200:
+                return {"link": first_link, "text": f"{title} [{year}]" if year else title}
+
+            parser2 = HTMLParser(response2.text)
+            title_nodes = parser2.css(title_selector)
+
+            if title_nodes:
+                page_title = title_nodes[0].text(strip=True, separator=separator)
+                if not page_title.strip():
+                    return {"link": first_link, "text": f"{title} [{year}]" if year else title}
+                return {"link": first_link, "text": page_title}
+
+            return {"link": first_link, "text": f"{title} [{year}]" if year else title}
+
+        except Exception as e:
+            logger.error(f"Failed to search {label}: {e}")
+            return None
