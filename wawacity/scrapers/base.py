@@ -99,7 +99,9 @@ class BaseScraper:
                 return None
 
             parser = HTMLParser(response.text)
-            search_nodes = parser.css(f'a[href^="{link_prefix}"]')
+            search_nodes = parser.css(
+                f'div.wa-sub-block-title a[href^="{link_prefix}"]'
+            )
 
             if not search_nodes:
                 logger.error(f"No {label} links found for '{title}'")
