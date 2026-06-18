@@ -28,6 +28,19 @@ PROJECT_ROOT = os.path.dirname(__file__)
         (series_scraper, "The Boys", None, "the-boys", "serie"),
         # with year
         (series_scraper, "The Boys", "2019", "the-boys", "serie"),
+        # problematic title
+        pytest.param(
+            series_scraper,
+            "FROM",
+            "2022",
+            "from",
+            "serie",
+            marks=pytest.mark.xfail(
+                reason="Even with year provided, this title (probably an SQL stop word), is an issue for the database",
+                strict=True,
+                raises=AssertionError,
+            ),
+        ),
     ],
 )
 async def test_wawacity_search_flow(
