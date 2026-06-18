@@ -20,34 +20,12 @@ PROJECT_ROOT = os.path.dirname(__file__)
     [
         # --- FILMS ---
         # without year
-        pytest.param(
-            movie_scraper,
-            "La Belle Verte",
-            None,
-            "la-belle-verte",
-            "film",
-            marks=pytest.mark.xfail(
-                reason="date not provided, so an unrelated media is returned",
-                strict=True,
-                raises=AssertionError,
-            ),
-        ),
+        (movie_scraper, "La Belle Verte", None, "la-belle-verte", "film"),
         # with year
         (movie_scraper, "La Belle Verte", "1996", "la-belle-verte", "film"),
         # --- SERIES ---
         # without year
-        pytest.param(
-            series_scraper,
-            "The Boys",
-            None,
-            "the-boys",
-            "serie",
-            marks=pytest.mark.xfail(
-                reason="date not provided, so an unrelated media is returned",
-                strict=True,
-                raises=AssertionError,
-            ),
-        ),
+        (series_scraper, "The Boys", None, "the-boys", "serie"),
         # with year
         (series_scraper, "The Boys", "2019", "the-boys", "serie"),
     ],

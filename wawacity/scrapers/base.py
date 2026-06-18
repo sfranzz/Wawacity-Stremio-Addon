@@ -1,6 +1,6 @@
 from typing import List, Dict, Optional, Any
 from selectolax.parser import HTMLParser, Node
-from re import search
+from re import escape, match, search
 from wawacity.utils.http_client import http_client
 
 class BaseScraper:
@@ -106,8 +106,44 @@ class BaseScraper:
             if not search_nodes:
                 logger.error(f"No {label} links found for '{title}'")
                 return None
+            
+            target_title = title.lower().strip()
+            best_match_link = None
+            best_match_score = 0  # 0: no match, 1: 'in', 2: 'startswith', 3: 'exact'
+            # ^ : start with title
+            # (?: - saison \d+)? : optional for title - (Saison X) pattern
+            # (?: \([^)]+\))? : optional for eventual (LANGUAGE) pattern at the end
+            # $ : end of line
+            exact_series_pattern = rf"^{escape(target_title)}(?: - saison \d+)?(?: \([^)]+\))?$"
 
-            first_link = search_nodes[0].attributes.get("href", "")
+            for node in search_nodes:
+                node_text = node.text(strip=True).lower()
+                current_link = node.attributes.get("href", "")
+
+                # Exact match
+                if (node_text == target_title) or bool(match(exact_series_pattern, node_text)):
+                    best_match_link = current_link
+                    best_match_score = 3
+                    break
+
+                # 2. Start with (medium-high score)
+                elif node_text.startswith(target_title):
+                    if best_match_score < 2:
+                        best_match_link = current_link
+                        best_match_score = 2
+
+                # 3. Contains (lowest score)
+                elif target_title in node_text:
+                    if best_match_score < 1:
+                        best_match_link = current_link
+                        best_match_score = 1
+
+            # fallback
+            if not best_match_link:
+                logger.warn(f"No exact match found for '{title}', falling back to first result.")
+                best_match_link = search_nodes[0].attributes.get("href", "")
+
+            first_link = best_match_link
 
             # Step 2: Get title from content page
             detail_url = f"{base_url}/{first_link}"
