@@ -9,3 +9,6 @@ python-dotenv==1.0.0
 loguru==0.7.2
 rarfile==4.2
 mutagen==1.47.0
+pytest
+pytest-asyncio
+pytest-recording
