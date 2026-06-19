@@ -98,16 +98,27 @@ class BaseScraper:
                 logger.error(f"Search failed for {label}: {response.status_code}")
                 return None
 
+            search_link_selector = f'div.wa-sub-block-title a[href^="{link_prefix}"]'
             parser = HTMLParser(response.text)
-            search_nodes = parser.css(
-                f'div.wa-sub-block-title a[href^="{link_prefix}"]'
-            )
+            search_nodes = parser.css(search_link_selector)
 
-            if not search_nodes:
-                logger.error(f"No {label} links found for '{title}'")
-                return None
-            
             target_title = title.lower().strip()
+            if not search_nodes:
+                # Fallback to search by letter
+                if not target_title:
+                    return None
+                first_letter = target_title[0]
+                search_url = f"{base_url}/?p={search_path}{f'&year={str(year)}' if year else ''}&letter={first_letter}"
+                response = await http_client.get(search_url)
+                if response.status_code != 200:
+                    logger.error(f"Search failed for {label}: {response.status_code}")
+                    return None
+                parser = HTMLParser(response.text)
+                search_nodes = parser.css(search_link_selector)
+                if not search_nodes:
+                    logger.error(f"No {label} links found for '{title}'")
+                    return None
+            
             best_match_link = None
             best_match_score = 0  # 0: no match, 1: 'in', 2: 'startswith', 3: 'exact'
             # ^ : start with title
